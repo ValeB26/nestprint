@@ -75,4 +75,8 @@ Para el detalle de las decisiones técnicas y por qué se tomaron, ver
   16384 px, ~100 MP). La app lo detecta antes de intentar y sugiere un DPI que
   entre.
 - Se guarda un solo trabajo a la vez: al abrir se retoma el último.
+- **El trabajo guardado no viaja entre dispositivos.** Se guarda en el
+  navegador que lo creó, así que abrir la app en otra computadora o en el
+  celular no trae lo que estabas haciendo. Es consecuencia de no tener
+  servidor: no hay dónde sincronizar.
 - Está pensada para pantalla de computadora, no para teléfono.

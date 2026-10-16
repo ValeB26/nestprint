@@ -69,6 +69,43 @@ Requiere Node 20+. El desarrollo es en **Windows** (Asus TUF, VSCode).
 
 ---
 
+## Deploy
+
+La app está publicada en **Vercel**, desde el repo
+**https://github.com/ValeB26/nestprint** (rama `main`).
+
+- **Cada `git push` a `main` redeploya solo.** No hay que correr nada a mano.
+- **No hay `vercel.json`.** Vercel detecta Vite y ya sabe que el build es
+  `npm run build` y la salida `dist`. Haría falta solo si se agregaran rutas del
+  lado del cliente (`/editor`, `/trabajos`), que necesitan un rewrite a
+  `index.html`. Hoy la app es una sola pantalla y no usa router.
+- **`engines: { node: ">=20" }`** en `package.json` fija la versión de Node con
+  la que buildea Vercel; sin eso queda a merced del default de la plataforma,
+  que cambia solo cada tanto.
+- `.vercel` está en el `.gitignore`: lo escribe el CLI y no va al repo.
+
+### El trabajo guardado NO viaja entre dispositivos
+
+IndexedDB es **por origen y por navegador**. O sea:
+
+| Dónde se abre la app | Trabajo guardado |
+|---|---|
+| `localhost:5173` (desarrollo) | uno |
+| la URL de Vercel, en la laptop | otro |
+| la URL de Vercel, en otra compu o el celular | otro más |
+
+Son almacenamientos distintos y ninguno ve al otro: abrir la app en el celular
+no trae el trabajo de la laptop. **Es consecuencia de ser 100% client-side**, no
+un bug — sin servidor no hay dónde sincronizar.
+
+Si alguna vez hace falta llevar un trabajo de una máquina a otra, el camino
+corto es exportar/importar el snapshot como archivo `.json`: `toSnapshot()` y
+`fromSnapshot()` (`storage/projectSnapshot.ts`) ya hacen todo el trabajo, y
+`fromSnapshot()` ya valida lo que entra. Sincronización de verdad pide servidor
+y queda fuera del MVP.
+
+---
+
 ## Arquitectura: tres capas desacopladas
 
 ```
@@ -210,7 +247,7 @@ Valores por defecto en `DEFAULT_CONFIG` (`src/types/index.ts`).
 
 ---
 
-## Estado actual: Fases 1 a 7 completadas (+ ajustes extra). MVP cerrado.
+## Estado actual: Fases 1 a 7 completadas (+ ajustes extra). MVP cerrado y deployado.
 
 La app hace el ciclo completo: cargás PNGs, definís variantes con tamaño y
 cantidad, presionás Optimizar y el motor las distribuye, ajustás a mano sobre el
@@ -218,6 +255,8 @@ lienzo con undo/redo y avisos de error, y **exportás el PNG transparente** list
 para el proveedor. El trabajo **se guarda solo** y se retoma al volver a abrir.
 
 **184 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
+Está publicada en Vercel y se accede por link desde cualquier dispositivo (ver
+"Deploy" más arriba).
 
 **En curso: nesting por forma real.** Etapas 1 a 4 terminadas. El editor valida
 por forma real y **el optimizador ya puede acomodar por forma**, detrás del
