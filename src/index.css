@@ -1,0 +1,59 @@
+@import 'tailwindcss';
+
+/*
+  Tema de NestPrint. En Tailwind 4 el tema se define aca en CSS con @theme:
+  cada variable genera utilidades (ej: --color-brand -> bg-brand, text-brand).
+
+  Direccion visual: herramienta de taller grafico. El verde "cutting-mat"
+  (plancha de corte) es el color de marca porque es del oficio; la superficie
+  es fria y neutra para que los disenos del usuario manden el color. La mono
+  se reserva para medidas numericas (cm, px), no para texto decorativo.
+*/
+@theme {
+  /*
+    Escala de texto en tres pasos. Los tres pasan el minimo de contraste (4.5:1)
+    sobre fondo claro: el faint anterior (#9aa1ab) daba 3:1 y los textos de
+    ayuda no se leian bien.
+      ink   -> texto principal
+      muted -> etiquetas y texto secundario  (6.2:1)
+      faint -> pistas y notas al pie         (4.8:1)
+  */
+  --color-ink: #17191c;
+  --color-muted: #5b616b;
+  --color-faint: #6b7280;
+
+  --color-surface: #ffffff;
+  --color-canvas: #eceef1;
+  --color-panel: #f6f7f9;
+  --color-border: #dde0e5;
+
+  --color-brand: #1f7a63;
+  --color-brand-hover: #1a6a56;
+
+  --color-valid: #2563eb;
+  --color-invalid: #dc2626;
+  --color-warn: #d97706;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numeros de medida: tabulares para que no "bailen" al cambiar de valor */
+.measure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
