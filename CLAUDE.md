@@ -269,7 +269,7 @@ cantidad, presionás Optimizar y el motor las distribuye, ajustás a mano sobre 
 lienzo con undo/redo y avisos de error, y **exportás el PNG transparente** listo
 para el proveedor. El trabajo **se guarda solo** y se retoma al volver a abrir.
 
-**219 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
+**230 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
 Está publicada en Vercel y se accede por link desde cualquier dispositivo (ver
 "Deploy" más arriba).
 
@@ -336,6 +336,7 @@ nestprint/
     │   ├── aspect.test.ts       ← 19 tests (incluye el logo que salía cuadrado)
     │   ├── resolution.ts        ← DPI real de una variante + aviso (puro)
     │   ├── resolution.test.ts   ← 16 tests
+    │   ├── sealedWhite.test.ts  ← 11 tests de erode + blanco sellado
     │   ├── geometry.ts          ← pieceBounds/pieceCenter/angleFromTo/unionBounds
     │   ├── geometry.test.ts     ← 12 tests de bounding box, ángulos y uniones
     │   ├── metrics.ts           ← alto usado y aprovechamiento derivados de las piezas
@@ -762,6 +763,44 @@ de módulo, porque el lienzo y la barra de métricas validan por separado y si
 cada uno tuviera su caché se construiría todo dos veces. La clave incluye todo
 lo que cambia la forma (tamaño, rotación, precision, gap, modo de fondo), así
 que se invalida sola.
+
+### El blanco sellado entre dos trazos (bug de la cuña)
+
+`border` conserva el blanco que el relleno desde el borde no alcanza. Eso es lo
+correcto para el relleno de una insignia, y **mal** para la cuña que queda
+atrapada entre dos letras cuyos contornos casi se tocan: eso es fondo, se ve
+sobre lienzo oscuro y **se imprime como tinta blanca**.
+
+Lo distingue el **grosor del sello**, no el tamaño. Medido sobre el logo de una
+pollería (1025 × 957):
+
+| Adelgazando la barrera k px | regiones encerradas | la cuña |
+|---|---|---|
+| 0–2 | 34 | **queda** |
+| **3–5** | 33 | **eliminada, y nada más** |
+| 8 | 23 | eliminada, pero se come 11 regiones legítimas |
+
+**Por tamaño no se puede separar, está medido:** la cuña tenía 25 px de grosor
+y las letras de "J. DE GARAY 2565" entre 11 y 15. Cualquier umbral por área o
+por grosor borraría texto real.
+
+`reachableBackground()` (`lib/designMask.ts`) adelgaza la barrera en
+`SEALED_BARRIER_FRACTION` (0.004 del lado menor) y vuelve a preguntar qué se
+alcanza. Es **relativo** a propósito: 4 px en el render de 1025, 2 px en la
+muestra de 512, 12 px al exportar a 3000. Las dos resoluciones dan el mismo
+0.61% de blanco rescatado, que es la prueba de que la escala es la correcta.
+
+**La guarda (`MAX_RESCUED_SHARE`, 25%)** es lo que lo vuelve seguro. En un
+dibujo de línea fina, adelgazar atravesaría todos los trazos y vaciaría los
+rellenos de una — justo lo que `border` existe para evitar. Si el rescate se
+lleva más de un cuarto del blanco encerrado, no se aplica nada. En el logo real
+rescata el 0.61%; en un line art rescataría casi el 100% y la guarda frena.
+
+**Nunca puede borrar un trazo:** solo suma celdas que ya eran blancas.
+
+`erode()` en `lib/mask.ts` es el dual de `dilate()`, con una diferencia: NO
+agranda la grilla, así que el borde también se come. Usa una transformada de
+distancia de dos pasadas, así el costo no depende del radio.
 
 ### Dos trampas que ya costaron un bug (no repetirlas)
 

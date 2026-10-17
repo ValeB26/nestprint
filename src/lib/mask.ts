@@ -345,3 +345,55 @@ export function dilate(mask: Mask, radius: number): Mask {
   }
   return out
 }
+
+/**
+ * Encoge una mascara: una celda sobrevive solo si TODAS las que estan a
+ * `radius` o menos (distancia de rey) tambien estaban ocupadas.
+ *
+ * Es el dual de dilate(), con una diferencia importante: NO agranda la grilla.
+ * Lo que queda fuera cuenta como vacio, asi que el borde tambien se come. Eso
+ * es lo que queremos donde se usa: adelgazar la barrera que encierra al fondo.
+ *
+ * Se calcula con una transformada de distancia de dos pasadas en vez de mirar
+ * la vecindad celda por celda: el costo no depende del radio.
+ */
+export function erode(mask: Mask, radius: number): Mask {
+  const { cols, rows, cells } = mask
+  if (radius <= 0) return { cols, rows, cells: new Uint8Array(cells) }
+
+  const lejos = cols + rows
+  const dist = new Int32Array(cols * rows)
+
+  // Pasada 1: desde arriba-izquierda. La distancia al vacio mas cercano mirando
+  // solo hacia atras, contando el afuera de la grilla como vacio.
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const i = row * cols + col
+      if (cells[i] !== 1) continue
+      let d = Math.min(Math.min(row, col) + 1, lejos)
+      if (row > 0) d = Math.min(d, dist[i - cols] + 1)
+      if (col > 0) d = Math.min(d, dist[i - 1] + 1)
+      if (row > 0 && col > 0) d = Math.min(d, dist[i - cols - 1] + 1)
+      if (row > 0 && col < cols - 1) d = Math.min(d, dist[i - cols + 1] + 1)
+      dist[i] = d
+    }
+  }
+
+  // Pasada 2: desde abajo-derecha, completando la distancia real.
+  for (let row = rows - 1; row >= 0; row--) {
+    for (let col = cols - 1; col >= 0; col--) {
+      const i = row * cols + col
+      if (cells[i] !== 1) continue
+      let d = Math.min(dist[i], Math.min(rows - 1 - row, cols - 1 - col) + 1)
+      if (row < rows - 1) d = Math.min(d, dist[i + cols] + 1)
+      if (col < cols - 1) d = Math.min(d, dist[i + 1] + 1)
+      if (row < rows - 1 && col < cols - 1) d = Math.min(d, dist[i + cols + 1] + 1)
+      if (row < rows - 1 && col > 0) d = Math.min(d, dist[i + cols - 1] + 1)
+      dist[i] = d
+    }
+  }
+
+  const out = createMask(cols, rows)
+  for (let i = 0; i < out.cells.length; i++) out.cells[i] = dist[i] > radius ? 1 : 0
+  return out
+}

@@ -1,8 +1,9 @@
-import { createMask, outsideRegion } from './mask'
+import { createMask } from './mask'
 import {
   ALPHA_MIN,
   DEFAULT_WHITE_SOFTNESS,
   DEFAULT_WHITE_THRESHOLD,
+  reachableBackground,
   whiteness,
   type BackgroundMode,
   type ImageSample,
@@ -129,7 +130,7 @@ export async function renderWithoutBackground(
     for (let i = 0; i < total; i++) {
       solido.cells[i] = px[i * 4 + 3] >= ALPHA_MIN && fondo(i) === 0 ? 1 : 0
     }
-    const alcanzado = outsideRegion(solido)
+    const alcanzado = reachableBackground(solido, (i) => fondo(i) > 0)
     for (let i = 0; i < total; i++) {
       if (alcanzado[i] !== 1) continue
       const w = fondo(i)

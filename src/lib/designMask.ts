@@ -2,6 +2,7 @@ import {
   contentBox,
   countOccupied,
   createMask,
+  erode,
   fillInteriorHoles,
   interiorHoleSpace,
   largestEmptySquare,
@@ -59,6 +60,76 @@ export function whiteness(
   const floor = threshold - softness
   if (level <= floor) return 0
   return (level - floor) / softness
+}
+
+/**
+ * Grosor de barrera que NO alcanza para encerrar fondo, como fraccion del lado
+ * menor de la imagen.
+ *
+ * POR QUE EXISTE: el relleno desde el borde no puede entrar a un blanco que
+ * quedo SELLADO, y lo conserva. Eso es lo correcto para el relleno blanco de
+ * una insignia, pero no para la cuña que queda atrapada entre dos letras cuyos
+ * contornos casi se tocan: eso es fondo, se ve sobre lienzo oscuro y se
+ * IMPRIME como tinta blanca.
+ *
+ * La diferencia entre los dos casos es el grosor del sello. Medido sobre el
+ * logo de una polleria (1025 x 957): la cuña entre la L y la A estaba sellada
+ * por 3 px, mientras que los contornos de las letras y del dibujo median 8 o
+ * mas. Adelgazar la barrera entre 3 y 5 px sacaba exactamente la cuña y nada
+ * mas; a 8 px ya se comia 11 regiones legitimas. 0.004 cae en el medio de esa
+ * ventana y, al ser relativo, vale igual en la muestra de 512 px que en el
+ * render de exportacion de 3000.
+ *
+ * NO se intento separarlas por tamaño: esta medido que no se puede. La cuña
+ * tenia 25 px de grosor y las letras de "J. DE GARAY 2565" entre 11 y 15, asi
+ * que cualquier umbral por area o por grosor borraria texto real.
+ */
+export const SEALED_BARRIER_FRACTION = 0.004
+
+/**
+ * Si adelgazar la barrera se lleva MAS que esta porcion del blanco encerrado,
+ * no se aplica.
+ *
+ * Es la red de seguridad: en un dibujo de linea fina, adelgazar atravesaria los
+ * trazos y vaciaria todos los rellenos de una, que es justo lo que 'border'
+ * existe para evitar. Ahi preferimos dejar la mancha a la vista antes que
+ * borrar parte del diseño en silencio. En el logo medido rescata el 0.7%.
+ */
+export const MAX_RESCUED_SHARE = 0.25
+
+/**
+ * Que celdas son fondo alcanzable desde el borde, incluyendo el blanco que
+ * quedo atrapado detras de un sello fino.
+ *
+ * Solo puede sumar celdas BLANCAS: adelgazar la barrera nunca borra un trazo.
+ *
+ * @param isWhite si esa celda tiene algo de fondo blanco.
+ */
+export function reachableBackground(solido: Mask, isWhite: (i: number) => boolean): Uint8Array {
+  const estricto = outsideRegion(solido)
+
+  const radio = Math.max(
+    1,
+    Math.round(Math.min(solido.cols, solido.rows) * SEALED_BARRIER_FRACTION),
+  )
+  const amplio = outsideRegion(erode(solido, radio))
+
+  // Cuanto del blanco encerrado rescataria el adelgazado.
+  let encerrado = 0
+  let rescatado = 0
+  for (let i = 0; i < estricto.length; i++) {
+    if (estricto[i] === 1 || !isWhite(i)) continue
+    encerrado++
+    if (amplio[i] === 1) rescatado++
+  }
+
+  if (encerrado === 0 || rescatado / encerrado > MAX_RESCUED_SHARE) return estricto
+
+  const salida = new Uint8Array(estricto)
+  for (let i = 0; i < salida.length; i++) {
+    if (salida[i] !== 1 && amplio[i] === 1 && isWhite(i)) salida[i] = 1
+  }
+  return salida
 }
 
 /** Muestra de una imagen a baja resolucion: lo justo para analizar su forma. */
@@ -148,7 +219,9 @@ export function analyzeDesign(
     for (let i = 0; i < total; i++) {
       solido.cells[i] = visible[i] === 1 && white[i] === 0 ? 1 : 0
     }
-    const alcanzado = outsideRegion(solido)
+    // Suma el blanco atrapado detras de un sello fino (la cuña entre dos
+    // letras), que outsideRegion sola conservaria. Ver reachableBackground.
+    const alcanzado = reachableBackground(solido, (i) => white[i] > 0)
     for (let i = 0; i < total; i++) {
       const alfa = alcanzado[i] === 1 ? sinFondo(i) : rgba[i * 4 + 3]
       ink.cells[i] = alfa >= ALPHA_MIN ? 1 : 0
