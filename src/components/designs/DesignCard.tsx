@@ -77,8 +77,15 @@ export default function DesignCard({ design }: { design: Design }) {
         </h3>
 
         <div className="space-y-1.5">
+          {/* heightOverWidth es la proporcion del CONTENIDO: la misma que usa
+              createVariant, para que editar una medida no cambie la forma. */}
           {variants.map((variant) => (
-            <VariantRow key={variant.id} variant={variant} design={design} />
+            <VariantRow
+              key={variant.id}
+              variant={variant}
+              design={design}
+              heightOverWidth={geometry?.heightOverWidth}
+            />
           ))}
         </div>
 

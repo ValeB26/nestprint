@@ -1,4 +1,6 @@
 import type { Design, DesignVariant } from '../types'
+import { CANVAS_WIDTH_CM } from '../types'
+import { aspectRatioOf, sizeFromWidth } from './aspect'
 import { newId } from './id'
 
 /** Ancho por defecto de una variante nueva, en cm. */
@@ -20,12 +22,13 @@ export function createVariant(
   nameIndex: number,
   heightOverWidth?: number,
 ): DesignVariant {
-  const ratio = heightOverWidth ?? design.originalHeightPx / design.originalWidthPx
-  const widthCm = DEFAULT_WIDTH_CM
-  // Si por algun motivo no hay proporcion valida, caemos a un cuadrado.
-  const heightCm = Number.isFinite(ratio) && ratio > 0
-    ? Math.round(widthCm * ratio * 10) / 10
-    : DEFAULT_WIDTH_CM
+  // La MISMA cuenta que usa VariantRow al escribir una medida. Si cada uno
+  // calculara la suya, la variante cambiaria de forma apenas se la edita: es
+  // justo el bug del logo que salia cuadrado.
+  const ratio = aspectRatioOf(design, heightOverWidth)
+  const { widthCm, heightCm } = ratio
+    ? sizeFromWidth(DEFAULT_WIDTH_CM, ratio, CANVAS_WIDTH_CM)
+    : { widthCm: DEFAULT_WIDTH_CM, heightCm: DEFAULT_WIDTH_CM } // sin proporcion, cuadrado
 
   return {
     id: newId(),

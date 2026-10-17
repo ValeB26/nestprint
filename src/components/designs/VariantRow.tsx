@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Design, DesignVariant } from '../../types'
 import { useApp } from '../../state/AppContext'
+import { aspectRatioOf, sizeFromWidth, sizeFromHeight } from '../../lib/aspect'
 import NumberInput from '../ui/NumberInput'
 
 /**
@@ -10,9 +11,12 @@ import NumberInput from '../ui/NumberInput'
  * PROPORCION AUTOMATICA
  * ---------------------
  * Con "Mantener proporcion" activado (por defecto), al cambiar el ancho se
- * recalcula el alto -y al revés- usando la proporcion real del archivo
- * (originalHeightPx / originalWidthPx). Asi el diseno nunca sale deformado y el
- * usuario solo piensa en una medida.
+ * recalcula el alto -y al revés- para que el diseno nunca salga deformado y el
+ * usuario solo piense en una medida.
+ *
+ * La cuenta vive en lib/aspect.ts, testeada, y usa la proporcion del CONTENIDO
+ * (no la del archivo): el rectangulo de la pieza es el content box, asi que el
+ * margen transparente del PNG no cuenta. Ver el comentario de ese modulo.
  *
  * Se puede desactivar porque sigue siendo configurable: a veces hace falta una
  * medida exacta que no respeta la proporcion del archivo.
@@ -23,47 +27,36 @@ import NumberInput from '../ui/NumberInput'
 const numberFieldClass =
   'measure w-full rounded-md border border-border bg-surface px-2 py-1 text-sm text-ink outline-none focus:border-brand'
 
-/** Redondeo a 1 decimal (1 mm): la precision con la que se piensan las medidas. */
-function round1(n: number): number {
-  return Math.round(n * 10) / 10
-}
-
 export default function VariantRow({
   variant,
   design,
+  heightOverWidth,
 }: {
   variant: DesignVariant
   design: Design
+  /** Proporcion del contenido visible, si la forma del diseno ya se analizo. */
+  heightOverWidth?: number
 }) {
   const { state, dispatch } = useApp()
   const canvasWidthCm = state.config.widthCm
 
-  // Proporcion del archivo original: alto / ancho.
-  const ratio = design.originalHeightPx / design.originalWidthPx
-  const hasRatio = Number.isFinite(ratio) && ratio > 0
+  const ratio = aspectRatioOf(design, heightOverWidth)
 
   const [keepAspect, setKeepAspect] = useState(true)
-  const linked = keepAspect && hasRatio
+  const hasRatio = ratio !== null
 
   function update(changes: Partial<Omit<DesignVariant, 'id' | 'designId'>>) {
     dispatch({ type: 'UPDATE_VARIANT', variantId: variant.id, changes })
   }
 
   function commitWidth(widthCm: number) {
-    if (!linked) return update({ widthCm })
-    update({ widthCm, heightCm: round1(widthCm * ratio) })
+    if (!keepAspect || ratio === null) return update({ widthCm })
+    update(sizeFromWidth(widthCm, ratio, canvasWidthCm))
   }
 
   function commitHeight(heightCm: number) {
-    if (!linked) return update({ heightCm })
-    let widthCm = round1(heightCm / ratio)
-    // El ancho no puede pasar el ancho del lienzo. Si se pasa, lo topeamos y
-    // recalculamos el alto, para respetar la proporcion sin salirse del material.
-    if (widthCm > canvasWidthCm) {
-      widthCm = canvasWidthCm
-      heightCm = round1(widthCm * ratio)
-    }
-    update({ widthCm, heightCm })
+    if (!keepAspect || ratio === null) return update({ heightCm })
+    update(sizeFromHeight(heightCm, ratio, canvasWidthCm))
   }
 
   return (

@@ -205,13 +205,27 @@ Definido en `src/types/index.ts`. Tres niveles:
    de verdad (SAT) es bastante más código y para el MVP no hace falta.
 
 7. **Las medidas de una variante se mantienen proporcionales por defecto.** Al
-   editar ancho o alto, el otro valor se recalcula con la proporción del archivo
-   original (`originalHeightPx / originalWidthPx`), así el diseño no sale
+   editar ancho o alto, el otro valor se recalcula con la proporción del
+   **CONTENIDO** (`geometry.heightOverWidth`), no la del archivo, así el diseño no sale
    deformado y el usuario piensa en una sola medida. El checkbox "Mantener
    proporción" (estado local de `VariantRow`, ON por defecto) permite
    desactivarlo cuando se necesita una medida exacta no proporcional. Si al
    derivar el ancho se pasa de los 58 cm, se topea y se recalcula el alto para
    no romper la proporción.
+
+   **Por qué la del contenido y no la del archivo** (bug del logo cuadrado): el
+   rectángulo de la pieza ES el content box — `contentDrawRect()` agranda la
+   imagen para que lo visible lo llene exacto, así que el margen transparente
+   del PNG no se dibuja. Un archivo cuadrado con un logo alto adentro tiene
+   proporción 1 pero se dibuja alto: con la del archivo, escribir 25 cm de
+   ancho daba 25 de alto y el logo salía achatado. La cuenta vive en
+   `lib/aspect.ts` (puro y testeado) y la usan `VariantRow` **y**
+   `createVariant`: antes cada uno calculaba la suya y la variante cambiaba de
+   forma apenas se la editaba.
+
+   **Cuidado:** cambiar el tratamiento del fondo cambia el content box, o sea
+   la proporción correcta. Las medidas ya cargadas NO se re-derivan solas, así
+   que conviene elegir el fondo ANTES de cargar las medidas.
 
 8. **Lo que se puede derivar, no se guarda.** El alto usado y el aprovechamiento
    se calculan de `placedPieces` (`lib/metrics.ts`) en vez de vivir en el estado.
@@ -254,7 +268,7 @@ cantidad, presionás Optimizar y el motor las distribuye, ajustás a mano sobre 
 lienzo con undo/redo y avisos de error, y **exportás el PNG transparente** listo
 para el proveedor. El trabajo **se guarda solo** y se retoma al volver a abrir.
 
-**184 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
+**203 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
 Está publicada en Vercel y se accede por link desde cualquier dispositivo (ver
 "Deploy" más arriba).
 
@@ -317,6 +331,8 @@ nestprint/
     │   ├── id.ts                ← newId() (crypto.randomUUID)
     │   ├── image.ts             ← readImageFile(): File → data URL + dimensiones px
     │   ├── createVariant.ts     ← variante por defecto (respeta proporción del diseño)
+    │   ├── aspect.ts            ← proporción del diseño + medidas derivadas (puro)
+    │   ├── aspect.test.ts       ← 19 tests (incluye el logo que salía cuadrado)
     │   ├── geometry.ts          ← pieceBounds/pieceCenter/angleFromTo/unionBounds
     │   ├── geometry.test.ts     ← 12 tests de bounding box, ángulos y uniones
     │   ├── metrics.ts           ← alto usado y aprovechamiento derivados de las piezas
