@@ -269,7 +269,7 @@ cantidad, presionás Optimizar y el motor las distribuye, ajustás a mano sobre 
 lienzo con undo/redo y avisos de error, y **exportás el PNG transparente** listo
 para el proveedor. El trabajo **se guarda solo** y se retoma al volver a abrir.
 
-**230 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
+**251 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
 Está publicada en Vercel y se accede por link desde cualquier dispositivo (ver
 "Deploy" más arriba).
 
@@ -317,6 +317,7 @@ nestprint/
 ├── package.json
 └── src/
     ├── main.tsx
+    ├── integration.test.ts   ← 21 tests: un trabajo real cruzando todas las capas
     ├── App.tsx                  ← envuelve el layout en <AppProvider>
     ├── index.css                ← Tailwind 4 + tema (@theme)
     ├── types/
