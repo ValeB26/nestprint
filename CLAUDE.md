@@ -312,7 +312,10 @@ modos con trabajos reales y decidir cuál debería ser el default.
 nestprint/
 ├── CLAUDE.md                    ← este archivo
 ├── README.md
-├── index.html                   ← fuentes Inter + JetBrains Mono
+├── index.html                   ← fuentes Inter + JetBrains Mono + favicon
+├── public/
+│   ├── favicon.png              ← isotipo 64x64, cuadrado con respiro
+│   └── logo.png                 ← isotipo 153x128, a su proporcion, para LogoMark
 ├── vite.config.ts               ← plugins react + tailwind
 ├── package.json
 └── src/
@@ -372,7 +375,7 @@ nestprint/
     │   └── ui/
     │       ├── NumberInput.tsx  ← input numérico con buffer de texto y commit en blur
     │       ├── Popover.tsx      ← panel flotante (cierra al clickear afuera o con Esc)
-    │       └── LogoMark.tsx     ← la marca (toolbar + pantalla de carga)
+    │       └── LogoMark.tsx     ← isotipo del estudio (toolbar + pantalla de carga)
     ├── packing/
     │   ├── maxRects.ts          ← algoritmo MaxRects BSSF genérico (clase MaxRectsBin)
     │   ├── pack.ts              ← packRects(): acomodado por rectángulo (MaxRects BSSF)
@@ -405,6 +408,15 @@ nestprint/
         ├── useProjectPersistence.ts ← retomar al abrir + autoguardado con pausa
         └── useProcessedUrl.ts   ← data URL con el fondo ya quitado
 ```
+
+**La marca es la del estudio (COCO).** Se usa el **isotipo** "CO CO/" solo, sin
+la palabra STUDIO del logo completo: a los 22 px de la barra esa palabra mediría
+2 px y además achicaría el bloque que sí se lee. Son dos recortes porque son dos
+usos: el favicon va cuadrado con respiro, el de la app a su proporción natural
+(es más ancho que alto, y encajarlo en un cuadrado lo dejaría innecesariamente
+chico). El fondo crema del archivo se quitó con una rampa y **desmezclando** el
+color de los bordes: sin eso, los bordes arrastran el crema y sobre blanco se ven
+como un halo sucio.
 
 **Diseño visual:** identidad de taller gráfico. Verde "cutting-mat" (`--color-brand`
 `#1f7a63`) como color de marca; superficie fría y neutra para que los diseños del
