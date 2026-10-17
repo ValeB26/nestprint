@@ -46,10 +46,27 @@ export default function DesignPanel() {
         // del archivo, que puede traer margen transparente de sobra.
         const sample = await sampleImage(dataUrl)
         setSample(design.id, sample)
-        const geometry = analyzeDesign(sample, {
+        let geometry = analyzeDesign(sample, {
           background: design.backgroundMode,
           allowInteriorNesting: design.allowInteriorNesting,
         })
+
+        // Un archivo SIN transparencia (todo JPG, y algunos PNG) se imprimiria
+        // como un rectangulo con fondo, que nunca es lo que se quiere en una
+        // calcomania. Arranca con "Quitar borde", que saca el fondo de afuera y
+        // conserva los blancos de adentro. Es "automatizacion primero, ajuste
+        // humano despues": queda a un clic de volver a "Dejar", y el encabezado
+        // de la tarjeta muestra siempre en que modo esta.
+        //
+        // Es seguro para una imagen de fondo oscuro: ahi el relleno desde el
+        // borde no alcanza nada y el resultado es igual que "Dejar".
+        if (geometry.isOpaque) {
+          design.backgroundMode = 'border'
+          geometry = analyzeDesign(sample, {
+            background: design.backgroundMode,
+            allowInteriorNesting: design.allowInteriorNesting,
+          })
+        }
 
         // Cada diseno nace con una variante lista para ajustar.
         dispatch({
@@ -80,7 +97,7 @@ export default function DesignPanel() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/png"
+          accept="image/png,image/jpeg,image/webp"
           multiple
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
@@ -110,14 +127,14 @@ function EmptyDesigns({ onAdd }: { onAdd: () => void }) {
     <div className="mt-6 rounded-lg border border-dashed border-border bg-surface/50 px-4 py-8 text-center">
       <p className="text-sm font-medium text-ink">Todavía no hay diseños</p>
       <p className="mt-1 text-xs text-muted">
-        Agregá un archivo PNG para empezar a crear variantes.
+        Agregá una imagen para empezar a crear variantes. PNG, JPG o WebP.
       </p>
       <button
         type="button"
         onClick={onAdd}
         className="mt-3 rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-hover"
       >
-        Subir PNG
+        Subir imagen
       </button>
     </div>
   )

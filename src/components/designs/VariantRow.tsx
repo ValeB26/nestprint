@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { Design, DesignVariant } from '../../types'
 import { useApp } from '../../state/AppContext'
 import { aspectRatioOf, sizeFromWidth, sizeFromHeight } from '../../lib/aspect'
+import { resolutionIssue } from '../../lib/resolution'
+import type { DesignGeometry } from '../../lib/designMask'
 import NumberInput from '../ui/NumberInput'
 
 /**
@@ -30,17 +32,21 @@ const numberFieldClass =
 export default function VariantRow({
   variant,
   design,
-  heightOverWidth,
+  geometry,
 }: {
   variant: DesignVariant
   design: Design
-  /** Proporcion del contenido visible, si la forma del diseno ya se analizo. */
-  heightOverWidth?: number
+  /** Forma del diseno, si ya se analizo. Da la proporcion y los px utiles. */
+  geometry?: DesignGeometry | null
 }) {
   const { state, dispatch } = useApp()
   const canvasWidthCm = state.config.widthCm
 
-  const ratio = aspectRatioOf(design, heightOverWidth)
+  const ratio = aspectRatioOf(design, geometry?.heightOverWidth)
+
+  // Resolucion real a la medida pedida. Se recalcula en cada render porque
+  // depende del ancho, que el usuario cambia todo el tiempo.
+  const resolucion = resolutionIssue(design, variant.widthCm, geometry?.contentFraction)
 
   const [keepAspect, setKeepAspect] = useState(true)
   const hasRatio = ratio !== null
@@ -133,6 +139,35 @@ export default function VariantRow({
           className="pb-1"
         />
       </div>
+
+      {/* Aviso de resolucion: el archivo no da para esta medida. Va con la
+          accion al lado (achicar a la medida que si entra), porque un aviso
+          que solo informa deja al usuario con el problema en la mano. */}
+      {resolucion && (
+        <div className="mt-2 flex items-start gap-1.5 rounded-md bg-warn/10 px-2 py-1.5 text-xs leading-snug text-warn">
+          <span aria-hidden="true" className="leading-none">&#9888;</span>
+          <span className="min-w-0 flex-1">
+            Saldría a <span className="measure font-semibold">{resolucion.dpi} DPI</span>, se va
+            a ver pixelado.{' '}
+            {resolucion.maxWidthCm >= 1 ? (
+              <>
+                Hasta{' '}
+                <button
+                  type="button"
+                  onClick={() => commitWidth(resolucion.maxWidthCm)}
+                  title={`Achicar el ancho a ${resolucion.maxWidthCm} cm`}
+                  className="measure font-semibold underline underline-offset-2 hover:no-underline"
+                >
+                  {resolucion.maxWidthCm} cm
+                </button>{' '}
+                se ve bien.
+              </>
+            ) : (
+              'Pedí el archivo en mejor calidad.'
+            )}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

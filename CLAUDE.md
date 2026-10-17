@@ -250,7 +250,8 @@ Definido en `src/types/index.ts`. Tres niveles:
   ver los diseños de tinta blanca (calcomanías blancas). **No afecta al PNG
   exportado**, que siempre sale transparente.
 - **Un solo usuario.** Sin autenticación ni persistencia server-side.
-- **Solo PNG** como formato de entrada en el MVP.
+- **PNG, JPG y WebP** como formatos de entrada. Un archivo sin transparencia
+  arranca con el fondo en "Quitar borde". Ver "Formatos de entrada y resolución".
 - **Rotación en el packing habilitada** por defecto, desactivable por variante
   (`allowRotation`). La rotación manual sobre el lienzo es siempre libre.
 - **Proporción del diseño:** al cambiar ancho o alto de una variante se
@@ -268,7 +269,7 @@ cantidad, presionás Optimizar y el motor las distribuye, ajustás a mano sobre 
 lienzo con undo/redo y avisos de error, y **exportás el PNG transparente** listo
 para el proveedor. El trabajo **se guarda solo** y se retoma al volver a abrir.
 
-**203 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
+**219 tests de Vitest en verde.** Compila (`tsc -b`), buildea y corre.
 Está publicada en Vercel y se accede por link desde cualquier dispositivo (ver
 "Deploy" más arriba).
 
@@ -333,6 +334,8 @@ nestprint/
     │   ├── createVariant.ts     ← variante por defecto (respeta proporción del diseño)
     │   ├── aspect.ts            ← proporción del diseño + medidas derivadas (puro)
     │   ├── aspect.test.ts       ← 19 tests (incluye el logo que salía cuadrado)
+    │   ├── resolution.ts        ← DPI real de una variante + aviso (puro)
+    │   ├── resolution.test.ts   ← 16 tests
     │   ├── geometry.ts          ← pieceBounds/pieceCenter/angleFromTo/unionBounds
     │   ├── geometry.test.ts     ← 12 tests de bounding box, ángulos y uniones
     │   ├── metrics.ts           ← alto usado y aprovechamiento derivados de las piezas
@@ -580,6 +583,67 @@ antes (caen al valor por defecto) y una config incompleta (se mezcla sobre
 
 **El historial de deshacer NO se guarda.** Retomar un trabajo arranca con el
 historial limpio: "deshacer" el haber abierto la app no significa nada.
+
+---
+
+## Formatos de entrada y resolución
+
+### Aceptar JPG no pidió un conversor
+
+Se aceptan **PNG, JPG y WebP** (`ACCEPTED_IMAGE_TYPES` en `lib/image.ts`).
+
+Todo lo que viene después de leer el archivo —muestrear la forma, quitar el
+fondo, dibujar en Konva, exportar— pasa por `new Image()` y canvas, a los que no
+les importa el formato de origen; y la exportación genera PNG siempre. Aceptar
+JPG fue cambiar el `accept` del input, no escribir un conversor.
+
+**Convertir un JPG a PNG no le da transparencia.** Un JPEG no tiene canal alfa:
+pasarlo a PNG deja un PNG con fondo opaco. Lo que lo vuelve usable es
+"Quitar borde", que ya existía.
+
+### Un archivo opaco arranca en 'border'
+
+Si `geometry.isOpaque`, el diseño nace con `backgroundMode: 'border'` en vez de
+`'none'`. Un JPG siempre es opaco, y con `'none'` se imprimiría como un
+rectángulo con fondo: nunca es lo que se quiere en una calcomanía. Queda a un
+clic de "Dejar" y el encabezado plegado muestra siempre el modo, así que no
+esconde nada.
+
+Es seguro con una imagen de fondo oscuro: ahí el relleno desde el borde no
+alcanza nada y el resultado es igual que `'none'`.
+
+### Lo que midió el JPG real del negocio (1025 × 957, logo de una pollería)
+
+| Modo | Tinta | Qué pasa |
+|---|---|---|
+| Dejar | 100% | el rectángulo blanco entero |
+| **Quitar borde** | **74.2%** | el logo con su blanco interior intacto |
+| Quitar blanco | 43.7% | **le borra el cuerpo del pollo y las letras** |
+
+Ese archivo es el caso de manual de por qué "Quitar blanco" es por diseño y
+explícito: casi la mitad de su tinta ES blanca y es contenido.
+
+La suciedad que deja el JPEG tras quitar el borde: 24 manchitas que suman 42 px
+sobre 981.000 (**0.004%**). La rampa de `whiteness()` ya las absorbe, así que
+**no hizo falta tocar el umbral** — la sospecha de que el ringing del JPEG
+obligaría a recalibrar no se confirmó. Está medido sobre UN archivo; si aparece
+uno peor (WhatsApp, muy comprimido), la perilla ya existe: `whiteThreshold` y
+`whiteSoftness` son parámetros de `analyzeDesign`.
+
+### Aviso de resolución, no escalado
+
+`lib/resolution.ts`, puro. `dpi = pxUtiles / (widthCm / 2.54)`, donde `pxUtiles`
+descuenta el margen que no se dibuja (`contentFraction.width`). Por debajo de
+**150 DPI** (`MIN_PRINT_DPI`) la fila de la variante avisa, y el ancho máximo
+que sí llega es un botón que lo aplica.
+
+El logo de 1025 px: a 10 cm son 260 DPI, a 25 cm son 104. Tope a 150: 17.3 cm.
+
+**Por qué avisar y no escalar:** interpolar agranda sin agregar detalle — es lo
+que ya hace la impresora sola. Escalar de verdad pide un modelo de IA: o manda
+los logos de los clientes a un tercero, o mete decenas de MB en el navegador.
+Vectorizar (trazar a SVG) sí daría resolución infinita y es client-side, pero
+solo sirve para arte plano de 1 o 2 colores y es una fase entera. Queda abierto.
 
 ---
 
@@ -893,7 +957,7 @@ online, marketplace, gestión de clientes/pedidos, facturación, IA generativa,
 análisis avanzado de imágenes, nesting por formas irregulares.
 
 Post-MVP cercano (NO ahora): guardar/cargar proyectos (localStorage), bounding box
-por alpha, múltiples heurísticas de packing, alerta de resolución insuficiente,
+por alpha, múltiples heurísticas de packing, vectorizar logos planos a SVG,
 otros anchos de lienzo, plantillas, redimensionar piezas desde el lienzo,
 arrastre de grupo con preview en vivo, validación exacta de rectángulos rotados.
 
