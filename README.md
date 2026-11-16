@@ -1,6 +1,6 @@
 # NestPrint
 
-Herramienta web para acomodar diseños en un lienzo de ancho fijo (58 cm) y
+Herramienta web para acomodar diseños en un lienzo de ancho fijo (28 cm) y
 exportar un PNG transparente listo para impresión. Automatiza el nesting 2D que
 hoy se hace a mano en Canva: más rápido y gastando menos material.
 

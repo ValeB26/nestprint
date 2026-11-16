@@ -82,7 +82,9 @@ function shapeLookups(shapes: Record<string, Mask>, variants: DesignVariant[], c
  * con celdas de 2 mm y gap de 2 mm daria 1 celda = 2 mm por lado, o sea el
  * DOBLE de la separacion pedida, y el metodo por formas arrancaria perdiendo.
  */
-const CONFIG: CanvasConfig = { ...DEFAULT_CONFIG, nestingMode: 'shape', cellCm: 0.1 }
+// Ancho propio: los casos estan dimensionados para 58 cm (14 discos de 14x14
+// entran 4 por fila). No depende del material del proveedor.
+const CONFIG: CanvasConfig = { ...DEFAULT_CONFIG, widthCm: 58, nestingMode: 'shape', cellCm: 0.1 }
 
 describe('packRaster', () => {
   it('coloca todas las piezas pedidas', () => {

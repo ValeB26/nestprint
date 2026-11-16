@@ -116,15 +116,16 @@ describe('sizeFromWidth', () => {
   })
 
   it('topea el ancho al lienzo y achica el alto con el', () => {
-    const size = sizeFromWidth(80, 1.5, CANVAS_WIDTH_CM)
+    const size = sizeFromWidth(CANVAS_WIDTH_CM * 2, 1.5, CANVAS_WIDTH_CM)
     expect(size.widthCm).toBe(CANVAS_WIDTH_CM)
-    expect(size.heightCm).toBe(87)
+    expect(size.heightCm).toBe(round1(CANVAS_WIDTH_CM * 1.5))
     esperarAltoDerivado(size, 1.5)
   })
 
   it('maneja diseños mas anchos que altos', () => {
-    const size = sizeFromWidth(30, 0.4, CANVAS_WIDTH_CM)
-    expect(size).toEqual({ widthCm: 30, heightCm: 12 })
+    // 10 cm entra en cualquier lienzo: aca se prueba la proporcion, no el tope.
+    const size = sizeFromWidth(10, 0.4, CANVAS_WIDTH_CM)
+    expect(size).toEqual({ widthCm: 10, heightCm: 4 })
   })
 })
 
@@ -134,10 +135,11 @@ describe('sizeFromHeight', () => {
   })
 
   it('cuando el ancho derivado no entra, topea y recalcula el alto', () => {
-    // Un diseno ancho (ratio 0.5) de 40 cm de alto pediria 80 cm de ancho.
-    const size = sizeFromHeight(40, 0.5, CANVAS_WIDTH_CM)
+    // Un diseno ancho (ratio 0.5) pide el doble de ancho que de alto, asi que
+    // con este alto el ancho derivado se pasa del lienzo seguro.
+    const size = sizeFromHeight(CANVAS_WIDTH_CM, 0.5, CANVAS_WIDTH_CM)
     expect(size.widthCm).toBe(CANVAS_WIDTH_CM)
-    expect(size.heightCm).toBe(29)
+    expect(size.heightCm).toBe(round1(CANVAS_WIDTH_CM * 0.5))
     // Al topear, el que se recalcula es el alto.
     esperarAltoDerivado(size, 0.5)
   })

@@ -13,7 +13,7 @@ import NumberInput from '../ui/NumberInput'
  * izquierdo de forma permanente, compitiendo por espacio con los disenos y las
  * medidas, que son lo que de verdad se toca todo el tiempo.
  *
- * El ancho del lienzo se muestra pero NO se edita: son 58 cm, el ancho del
+ * El ancho del lienzo se muestra pero NO se edita: es el ancho del
  * material del proveedor. Mostrarlo igual sirve de referencia al cargar medidas.
  *
  * Nota de unidades: el estado guarda la separacion en cm (gapCm), pero el

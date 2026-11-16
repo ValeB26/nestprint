@@ -5,6 +5,17 @@ import { packRects } from './pack'
 import { countPiecesWithIssues, validateLayout } from './validate'
 
 /**
+ * Ancho de lienzo propio de estos tests.
+ *
+ * NO se usa el del material (CANVAS_WIDTH_CM): estos tests prueban el
+ * ALGORITMO, y sus casos estan dimensionados para este ancho — el caso 5, por
+ * ejemplo, son dos piezas de 28.8 cm que lo llenan justo. Si tomaran el ancho
+ * del proveedor, cambiarlo romperia tests que no tienen nada que ver con eso.
+ * Paso exactamente eso al pasar de 58 a 28 cm.
+ */
+const LIENZO: CanvasConfig = { ...DEFAULT_CONFIG, widthCm: 58 }
+
+/**
  * Tests de la validacion del layout (Fase 6). El caso mas importante es el de
  * integracion: lo que produce el motor de packing tiene que ser SIEMPRE valido.
  */
@@ -28,19 +39,19 @@ describe('validateLayout', () => {
     const a = piece({ id: 'a', xCm: 0, yCm: 0 })
     // Separada 1 cm: mas que el gap de 0.2 cm.
     const b = piece({ id: 'b', xCm: 11, yCm: 0 })
-    expect(validateLayout([a, b], DEFAULT_CONFIG)).toEqual({})
+    expect(validateLayout([a, b], LIENZO)).toEqual({})
   })
 
   it('detecta una pieza que se sale por la derecha', () => {
     const p = piece({ id: 'a', xCm: 50, widthCm: 10 }) // 50 + 10 = 60 > 58
-    const issues = validateLayout([p], DEFAULT_CONFIG)
+    const issues = validateLayout([p], LIENZO)
     expect(issues['a']).toContain('outOfBounds')
   })
 
   it('detecta coordenadas negativas', () => {
     const izquierda = piece({ id: 'a', xCm: -1 })
     const arriba = piece({ id: 'b', xCm: 20, yCm: -0.5 })
-    const issues = validateLayout([izquierda, arriba], DEFAULT_CONFIG)
+    const issues = validateLayout([izquierda, arriba], LIENZO)
     expect(issues['a']).toContain('outOfBounds')
     expect(issues['b']).toContain('outOfBounds')
   })
@@ -48,7 +59,7 @@ describe('validateLayout', () => {
   it('detecta solapamiento y marca las dos piezas', () => {
     const a = piece({ id: 'a', xCm: 0, yCm: 0 })
     const b = piece({ id: 'b', xCm: 5, yCm: 5 }) // se pisa con a
-    const issues = validateLayout([a, b], DEFAULT_CONFIG)
+    const issues = validateLayout([a, b], LIENZO)
     expect(issues['a']).toContain('overlap')
     expect(issues['b']).toContain('overlap')
   })
@@ -57,7 +68,7 @@ describe('validateLayout', () => {
     const a = piece({ id: 'a', xCm: 0 })
     // Separadas 0.1 cm: no se pisan, pero el gap minimo es 0.2 cm.
     const b = piece({ id: 'b', xCm: 10.1 })
-    const issues = validateLayout([a, b], DEFAULT_CONFIG)
+    const issues = validateLayout([a, b], LIENZO)
     expect(issues['a']).toContain('tooClose')
     expect(issues['a']).not.toContain('overlap')
     expect(issues['b']).toContain('tooClose')
@@ -65,29 +76,29 @@ describe('validateLayout', () => {
 
   it('separacion exactamente igual al gap es valida', () => {
     const a = piece({ id: 'a', xCm: 0 })
-    const b = piece({ id: 'b', xCm: 10 + DEFAULT_CONFIG.gapCm })
-    expect(validateLayout([a, b], DEFAULT_CONFIG)).toEqual({})
+    const b = piece({ id: 'b', xCm: 10 + LIENZO.gapCm })
+    expect(validateLayout([a, b], LIENZO)).toEqual({})
   })
 
   it('tiene en cuenta la rotacion: una pieza rotada ocupa mas', () => {
     // 50 de ancho x 20 de alto arranca en x=5: sin rotar entra (5+50=55 < 58).
     const horizontal = piece({ id: 'a', xCm: 5, yCm: 0, widthCm: 50, heightCm: 20 })
-    expect(validateLayout([horizontal], DEFAULT_CONFIG)).toEqual({})
+    expect(validateLayout([horizontal], LIENZO)).toEqual({})
 
     // Rotada 90 grados ocupa 20 de ancho x 50 de alto alrededor del mismo
     // centro, asi que se va por arriba del lienzo (yCm negativo).
     const rotada = { ...horizontal, rotation: 90 }
-    expect(validateLayout([rotada], DEFAULT_CONFIG)['a']).toContain('outOfBounds')
+    expect(validateLayout([rotada], LIENZO)['a']).toContain('outOfBounds')
   })
 
   it('detecta un solape que aparece solo al rotar una pieza', () => {
     const a = piece({ id: 'a', xCm: 0, yCm: 10, widthCm: 20, heightCm: 2 })
     const b = piece({ id: 'b', xCm: 30, yCm: 10, widthCm: 20, heightCm: 2 })
     // Lejos una de otra en horizontal: sin problemas.
-    expect(validateLayout([a, b], DEFAULT_CONFIG)).toEqual({})
+    expect(validateLayout([a, b], LIENZO)).toEqual({})
 
     // Si "b" rota 90 grados, se estira en vertical pero no llega a tocar a "a".
-    const issues = validateLayout([a, { ...b, rotation: 90 }], DEFAULT_CONFIG)
+    const issues = validateLayout([a, { ...b, rotation: 90 }], LIENZO)
     expect(issues).toEqual({})
   })
 
@@ -95,7 +106,7 @@ describe('validateLayout', () => {
     const a = piece({ id: 'a', xCm: 0, yCm: 0 })
     const b = piece({ id: 'b', xCm: 5, yCm: 5 })
     const c = piece({ id: 'c', xCm: 30, yCm: 0 })
-    const issues = validateLayout([a, b, c], DEFAULT_CONFIG)
+    const issues = validateLayout([a, b, c], LIENZO)
     expect(countPiecesWithIssues(issues)).toBe(2)
   })
 
@@ -105,10 +116,10 @@ describe('validateLayout', () => {
       { id: 'v2', designId: 'A', name: 'chica', widthCm: 7, heightCm: 5, quantity: 25, allowRotation: true },
       { id: 'v3', designId: 'B', name: 'alta', widthCm: 6, heightCm: 22, quantity: 8, allowRotation: false },
     ]
-    const result = packRects(variants, DEFAULT_CONFIG)
+    const result = packRects(variants, LIENZO)
 
     expect(result.pieces.length).toBe(36)
-    expect(validateLayout(result.pieces, DEFAULT_CONFIG)).toEqual({})
+    expect(validateLayout(result.pieces, LIENZO)).toEqual({})
   })
 })
 
@@ -161,7 +172,7 @@ describe('validateLayout con formas reales', () => {
     }
   }
 
-  const SIN_GAP: CanvasConfig = { ...DEFAULT_CONFIG, cellCm: 1, gapCm: 0 }
+  const SIN_GAP: CanvasConfig = { ...LIENZO, cellCm: 1, gapCm: 0 }
 
   const formaL = { lines: FORMA_L, widthCm: 4, heightCm: 4 }
   const macizo = { lines: MACIZO, widthCm: 2, heightCm: 2 }
@@ -190,7 +201,7 @@ describe('validateLayout con formas reales', () => {
   })
 
   it('respeta la separacion minima entre formas', () => {
-    const config: CanvasConfig = { ...DEFAULT_CONFIG, cellCm: 0.5, gapCm: 1 }
+    const config: CanvasConfig = { ...LIENZO, cellCm: 0.5, gapCm: 1 }
     const shapeOf = lookupFor({ M: macizo }, config)
     const a = piece({ id: 'a', variantId: 'M', xCm: 0, yCm: 0, widthCm: 2, heightCm: 2 })
 

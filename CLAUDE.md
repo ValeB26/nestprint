@@ -9,7 +9,7 @@ de tocar código.
 
 Herramienta web **100% client-side** para un negocio de gráfica y estampado.
 Automatiza el acomodo (nesting 2D) de diseños dentro de un lienzo de **ancho fijo
-(58 cm) y altura variable**, y exporta un **PNG transparente** listo para enviar
+(28 cm) y altura variable**, y exporta un **PNG transparente** listo para enviar
 al proveedor de impresión. Hoy ese acomodo se hace a mano en Canva: es lento y
 desperdicia material.
 
@@ -210,7 +210,7 @@ Definido en `src/types/index.ts`. Tres niveles:
    deformado y el usuario piensa en una sola medida. El checkbox "Mantener
    proporción" (estado local de `VariantRow`, ON por defecto) permite
    desactivarlo cuando se necesita una medida exacta no proporcional. Si al
-   derivar el ancho se pasa de los 58 cm, se topea y se recalcula el alto para
+   derivar el ancho se pasa del ancho del lienzo, se topea y se recalcula el alto para
    no romper la proporción.
 
    **Por qué la del contenido y no la del archivo** (bug del logo cuadrado): el
@@ -236,13 +236,13 @@ Definido en `src/types/index.ts`. Tres niveles:
 
 ## Parámetros confirmados con el usuario del negocio
 
-- **Ancho del lienzo:** 58 cm **fijo, NO configurable** desde la UI (es el ancho
+- **Ancho del lienzo:** 28 cm **fijo, NO configurable** desde la UI (es el ancho
   del material del proveedor). Se muestra en el panel como referencia. Sigue
   siendo un campo de `CanvasConfig` porque el motor de packing lo recibe como
   parámetro; la constante es `CANVAS_WIDTH_CM`. Otros anchos son post-MVP.
 - **Separación mínima:** 2 mm por defecto (`gapCm: 0.2`), configurable.
 - **Resolución de exportación:** **300 DPI** (lo que usa hoy en Canva),
-  **configurable**. A 300 DPI, 58 cm = 6850 px de ancho.
+  **configurable**. A 300 DPI, 28 cm = 3307 px de ancho.
 - **Fondo del lienzo en pantalla:** Blanco (default), Negro o **personalizado**
   (`previewBackground` guarda un color hex cualquiera). Se elige con muestras,
   la paleta nativa del navegador o un cuentagotas (EyeDropper API; solo en
@@ -301,8 +301,9 @@ modos con trabajos reales y decidir cuál debería ser el default.
   retoma el último. Varios proyectos sería la evolución natural y el
   almacenamiento ya lo soporta (IndexedDB con una clave por proyecto).
 - **La exportación tiene un techo de tamaño**, impuesto por el navegador: lado
-  máximo 16384 px y ~100 megapíxeles de área. Un trabajo de 135 cm a 300 DPI
-  (6850 × 15945 px = 109 MP) NO entra; la app lo detecta antes de intentar y
+  máximo 16384 px y ~100 megapíxeles de área. Con 28 cm de ancho el tope a
+  300 DPI son **138.7 cm de alto** (16384 px de lado); la app lo detecta antes
+  de intentar y
   sugiere un DPI que sí entre. Exportar por partes sería la solución real, y es
   post-MVP.
 
@@ -482,7 +483,7 @@ lee solo pero las razones se olvidan.
   El margen extra evita que, cuando el trabajo es más bajo que ancho, la
   heurística prefiera apilar en columna en vez de llenar filas. Esto lo encontró
   un test que fallaba: sin el margen, 10 piezas de 5×5 quedaban en una columna.
-- `unplaced` cuenta las piezas que no entran ni rotadas (más anchas que 58 cm).
+- `unplaced` cuenta las piezas que no entran ni rotadas (más anchas que el lienzo).
   Hoy solo se avisa por consola.
 
 **Fase 5 — Visualización con Konva:**
@@ -690,11 +691,18 @@ sin avisar**, que es el peor fallo posible.
 Por eso `exportBlocker()` chequea ANTES de intentar y devuelve un mensaje con una
 sugerencia concreta:
 
-> A 300 DPI el PNG mediría 6850 × 15945 px (109.2 MP), demasiado para el
-> navegador. Probá con 150 DPI.
+> A 300 DPI el PNG mediría 3307 × 20776 px, y el navegador no soporta lados de
+> más de 16384 px. Probá con 230 DPI.
 
-Un trabajo de 58 × 135 cm a 300 DPI no entra. La solución real sería exportar por
+Un trabajo de 28 × 176 cm a 300 DPI no entra. La solución real sería exportar por
 partes (varios PNG), y es post-MVP.
+
+**Al angostar el lienzo de 58 a 28 cm, el techo se movió de una forma que no es
+la esperada.** El alto máximo SUBE (123.6 → 138.7 cm), porque el límite deja de
+ser el área de 100 MP y pasa a ser el lado de 16384 px. Pero el material que
+entra por PNG baja de 7169 a 3884 cm², o sea **46% menos**: el mismo trabajo
+ocupa casi el doble de alto, así que se llega al tope con la mitad de piezas.
+A 150 DPI los dos anchos dan el mismo tope de 277.4 cm, porque ahí manda el lado.
 
 ---
 
@@ -891,7 +899,8 @@ rectangular**, y devuelve la de menor altura. Incluir la rectangular de
 candidata es lo que garantiza que el modo Formas **nunca** dé un resultado peor
 que el método de siempre; hay un test que lo verifica en los tres trabajos.
 
-Resultados medidos (82 piezas mixtas, 58 cm de ancho):
+Resultados medidos (82 piezas mixtas, **con un lienzo de 58 cm**, el ancho que
+había cuando se midió):
 
 | Trabajo | Una estrategia, presupuesto 4000 | Multi-estrategia | vs Rectángulos |
 |---|---|---|---|
@@ -931,7 +940,8 @@ como tercer parámetro OPCIONAL: sin él, el comportamiento actual intacto.
 
 ### Rendimiento (medido en la etapa 2)
 
-Grilla de 1 mm sobre 58 cm = 580 columnas. Pieza típica de 10 x 7 cm = 102 x 72
+Medido con un lienzo de 58 cm: grilla de 1 mm = 580 columnas (con los 28 cm de
+hoy son 280, o sea la mitad del costo). Pieza típica de 10 x 7 cm = 102 x 72
 celdas con la dilatación. Midiendo 47.800 pruebas de posición (100 piezas x 478
 posiciones):
 
@@ -967,7 +977,7 @@ variantes), 4 (motor de packing + tests), 5 (visualización con Konva), 6 (edici
 manual + undo/redo + validaciones).
 
 **Ajustes extra pedidos después de la Fase 6** (ya aplicados): ancho de lienzo
-fijo en 58 cm; proporción automática ancho/alto por variante; fondo de lienzo
+fijo, no configurable; proporción automática ancho/alto por variante; fondo de lienzo
 Blanco/Negro/personalizado con paleta y cuentagotas; rotación libre con tirador
 de arrastre y atajos de 90°/180°; selección múltiple con Ctrl+clic.
 
@@ -994,6 +1004,14 @@ de arrastre y atajos de 90°/180°; selección múltiple con Ctrl+clic.
 **Validar en cada caso:** sin solapamientos; todo dentro de límites; cantidades
 exactas; dimensiones correctas; rotaciones válidas; separación mínima respetada;
 altura calculada correctamente; `variantId` correcto por pieza.
+
+**Estos casos corren con un lienzo propio de 58 cm, no con el del material.**
+Prueban el ALGORITMO, y están dimensionados para ese ancho: el caso 5 son dos
+piezas de 28.8 cm que lo llenan justo. Si tomaran `CANVAS_WIDTH_CM`, cambiar de
+proveedor rompería tests que no tienen nada que ver con eso — pasó exactamente
+al bajar a 28 cm. Lo mismo en `validate.test.ts` y `packRaster.test.ts`. Los
+tests que SÍ deben seguir al material (`aspect`, `integration`) derivan sus
+expectativas de la constante en vez de escribir el número.
 
 Están en `src/packing/pack.test.ts`, con un validador reutilizable que chequea
 todos los invariantes. `validate.test.ts` agrega el test más valioso: que el

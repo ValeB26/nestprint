@@ -5,6 +5,17 @@ import { packRects } from './pack'
 import { pieceBounds } from '../lib/geometry'
 
 /**
+ * Ancho de lienzo propio de estos tests.
+ *
+ * NO se usa el del material (CANVAS_WIDTH_CM): estos tests prueban el
+ * ALGORITMO, y sus casos estan dimensionados para este ancho — el caso 5, por
+ * ejemplo, son dos piezas de 28.8 cm que lo llenan justo. Si tomaran el ancho
+ * del proveedor, cambiarlo romperia tests que no tienen nada que ver con eso.
+ * Paso exactamente eso al pasar de 58 a 28 cm.
+ */
+const LIENZO: CanvasConfig = { ...DEFAULT_CONFIG, widthCm: 58 }
+
+/**
  * Tests del motor de packing (Fase 4). Cubren los 7 casos acordados en el
  * CLAUDE.md. En cada uno validamos los invariantes que NUNCA se pueden romper:
  *
@@ -130,15 +141,15 @@ function countByVariant(pieces: PlacedPiece[]): Map<string, number> {
 describe('motor de packing (MaxRects BSSF)', () => {
   it('caso 1: 10 piezas de 5x5 en lienzo de 58 cm', () => {
     const variants = [makeVariant({ widthCm: 5, heightCm: 5, quantity: 10 })]
-    const result = packRects(variants, DEFAULT_CONFIG)
+    const result = packRects(variants, LIENZO)
 
     expect(result.pieces).toHaveLength(10)
     expect(result.unplaced).toBe(0)
-    validate(variants, DEFAULT_CONFIG, result.pieces)
+    validate(variants, LIENZO, result.pieces)
 
     // 10 piezas de 5 cm (+0.2 de gap) entran holgadas en una fila de 58 cm:
     // esperamos una sola fila, es decir alto usado cercano a 5 cm.
-    expect(result.usedHeightCm).toBeLessThanOrEqual(5 + DEFAULT_CONFIG.gapCm + EPS)
+    expect(result.usedHeightCm).toBeLessThanOrEqual(5 + LIENZO.gapCm + EPS)
   })
 
   it('caso 2: piezas de tamanos diferentes', () => {
@@ -147,26 +158,26 @@ describe('motor de packing (MaxRects BSSF)', () => {
       makeVariant({ widthCm: 8, heightCm: 12, quantity: 3 }),
       makeVariant({ widthCm: 15, heightCm: 6, quantity: 4 }),
     ]
-    const result = packRects(variants, DEFAULT_CONFIG)
+    const result = packRects(variants, LIENZO)
 
     expect(result.pieces).toHaveLength(9)
     expect(result.unplaced).toBe(0)
-    validate(variants, DEFAULT_CONFIG, result.pieces)
+    validate(variants, LIENZO, result.pieces)
   })
 
   it('caso 3: muchas unidades de una pieza pequena', () => {
     const variants = [makeVariant({ widthCm: 2, heightCm: 2, quantity: 100 })]
-    const result = packRects(variants, DEFAULT_CONFIG)
+    const result = packRects(variants, LIENZO)
 
     expect(result.pieces).toHaveLength(100)
     expect(result.unplaced).toBe(0)
-    validate(variants, DEFAULT_CONFIG, result.pieces)
+    validate(variants, LIENZO, result.pieces)
   })
 
   it('caso 4: pieza que solo entra rotada', () => {
     // 70 cm de ancho no entra en un lienzo de 58; rotada (50 de ancho) si.
     const variant = makeVariant({ widthCm: 70, heightCm: 50, quantity: 1, allowRotation: true })
-    const result = packRects([variant], DEFAULT_CONFIG)
+    const result = packRects([variant], LIENZO)
 
     expect(result.pieces).toHaveLength(1)
     expect(result.unplaced).toBe(0)
@@ -179,11 +190,11 @@ describe('motor de packing (MaxRects BSSF)', () => {
     const bounds = pieceBounds(result.pieces[0])
     expect(bounds.widthCm).toBeCloseTo(50)
     expect(bounds.heightCm).toBeCloseTo(70)
-    validate([variant], DEFAULT_CONFIG, result.pieces)
+    validate([variant], LIENZO, result.pieces)
 
     // Si la misma variante NO permite rotar, no entra.
     const noRot = makeVariant({ widthCm: 70, heightCm: 50, quantity: 1, allowRotation: false })
-    const result2 = packRects([noRot], DEFAULT_CONFIG)
+    const result2 = packRects([noRot], LIENZO)
     expect(result2.pieces).toHaveLength(0)
     expect(result2.unplaced).toBe(1)
   })
@@ -191,14 +202,14 @@ describe('motor de packing (MaxRects BSSF)', () => {
   it('caso 5: combinacion que casi llena exactamente el ancho', () => {
     // Dos piezas de 28.8 cm: infladas (29 c/u) suman 58 justo. Entran en una fila.
     const variants = [makeVariant({ widthCm: 28.8, heightCm: 10, quantity: 2, allowRotation: false })]
-    const result = packRects(variants, DEFAULT_CONFIG)
+    const result = packRects(variants, LIENZO)
 
     expect(result.pieces).toHaveLength(2)
     expect(result.unplaced).toBe(0)
-    validate(variants, DEFAULT_CONFIG, result.pieces)
+    validate(variants, LIENZO, result.pieces)
 
     // Una sola fila: alto usado cercano a 10 cm.
-    expect(result.usedHeightCm).toBeLessThanOrEqual(10 + DEFAULT_CONFIG.gapCm + EPS)
+    expect(result.usedHeightCm).toBeLessThanOrEqual(10 + LIENZO.gapCm + EPS)
     // Las dos comparten fila (misma coordenada y).
     expect(result.pieces[0].yCm).toBeCloseTo(result.pieces[1].yCm)
   })
@@ -206,11 +217,11 @@ describe('motor de packing (MaxRects BSSF)', () => {
   it('caso 6: un mismo diseno con varias variantes', () => {
     const v1 = makeVariant({ designId: 'logo', widthCm: 25, heightCm: 15, quantity: 5 })
     const v2 = makeVariant({ designId: 'logo', widthCm: 8, heightCm: 5, quantity: 20 })
-    const result = packRects([v1, v2], DEFAULT_CONFIG)
+    const result = packRects([v1, v2], LIENZO)
 
     expect(result.pieces).toHaveLength(25)
     expect(result.unplaced).toBe(0)
-    validate([v1, v2], DEFAULT_CONFIG, result.pieces)
+    validate([v1, v2], LIENZO, result.pieces)
 
     const counts = countByVariant(result.pieces)
     expect(counts.get(v1.id)).toBe(5)
@@ -224,18 +235,18 @@ describe('motor de packing (MaxRects BSSF)', () => {
       makeVariant({ designId: 'B', widthCm: 12, heightCm: 18, quantity: 3 }),
       makeVariant({ designId: 'B', widthCm: 6, heightCm: 6, quantity: 10 }),
     ]
-    const result = packRects(variants, DEFAULT_CONFIG)
+    const result = packRects(variants, LIENZO)
 
     expect(result.pieces).toHaveLength(21)
     expect(result.unplaced).toBe(0)
-    validate(variants, DEFAULT_CONFIG, result.pieces)
+    validate(variants, LIENZO, result.pieces)
 
     const counts = countByVariant(result.pieces)
     for (const v of variants) expect(counts.get(v.id)).toBe(v.quantity)
   })
 
   it('caso borde: sin variantes devuelve resultado vacio', () => {
-    const result = packRects([], DEFAULT_CONFIG)
+    const result = packRects([], LIENZO)
     expect(result.pieces).toHaveLength(0)
     expect(result.usedHeightCm).toBe(0)
     expect(result.unplaced).toBe(0)

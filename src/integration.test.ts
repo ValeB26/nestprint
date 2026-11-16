@@ -8,7 +8,13 @@ import { layoutHeightCm, utilizationPercent } from './lib/metrics'
 import { pieceBounds } from './lib/geometry'
 import { pack } from './packing'
 import { validateLayout } from './packing/validate'
-import { exportBlocker, exportFileName, exportSize, maxUsableDpi } from './export/exportSize'
+import {
+  cmToPx,
+  exportBlocker,
+  exportFileName,
+  exportSize,
+  maxUsableDpi,
+} from './export/exportSize'
 import { appReducer, initialState, type AppState } from './state/appReducer'
 import { createHistory, historyReducer } from './state/history'
 import { fromSnapshot, hasWork, toSnapshot } from './storage/projectSnapshot'
@@ -48,10 +54,10 @@ function trabajoReal() {
   const vertical = design(600, 1500, 'vertical') // alto
 
   const variants: DesignVariant[] = [
-    { ...createVariant(insignia, 1), widthCm: 10, heightCm: 10, quantity: 12 },
-    { ...createVariant(insignia, 2), widthCm: 5, heightCm: 5, quantity: 20 },
-    { ...createVariant(lettering, 1), widthCm: 24, heightCm: 8, quantity: 6 },
-    { ...createVariant(vertical, 1), widthCm: 8, heightCm: 20, quantity: 8 },
+    { ...createVariant(insignia, 1), widthCm: 10, heightCm: 10, quantity: 6 },
+    { ...createVariant(insignia, 2), widthCm: 5, heightCm: 5, quantity: 10 },
+    { ...createVariant(lettering, 1), widthCm: 24, heightCm: 8, quantity: 3 },
+    { ...createVariant(vertical, 1), widthCm: 8, heightCm: 20, quantity: 4 },
   ]
 
   return { designs: [insignia, lettering, vertical], variants }
@@ -117,8 +123,10 @@ describe('un trabajo completo, de las variantes al PNG', () => {
     expect(exportBlocker(config.widthCm, r.usedHeightCm, config.dpi)).toBeNull()
 
     const { widthPx } = exportSize(config.widthCm, r.usedHeightCm, config.dpi)
-    expect(widthPx).toBe(6850) // 58 cm a 300 DPI
-    expect(exportFileName(config.widthCm, r.usedHeightCm, config.dpi)).toContain('58')
+    expect(widthPx).toBe(Math.round(cmToPx(CANVAS_WIDTH_CM, 300)))
+    expect(exportFileName(config.widthCm, r.usedHeightCm, config.dpi)).toContain(
+      String(CANVAS_WIDTH_CM),
+    )
   })
 })
 
@@ -144,7 +152,7 @@ describe('modo Formas contra modo Rectangulos', () => {
   it('los dos modos colocan la misma cantidad de piezas y los dos validan', () => {
     for (const nestingMode of ['rect', 'shape'] as const) {
       const r = pack(variants, { ...config, nestingMode })
-      expect(r.pieces).toHaveLength(46)
+      expect(r.pieces).toHaveLength(23)
       expect(validateLayout(r.pieces, { ...config, nestingMode })).toEqual({})
     }
   })
@@ -276,13 +284,14 @@ describe('los avisos que ve el usuario', () => {
   })
 
   it('un trabajo muy alto se frena antes de intentar, con una salida concreta', () => {
-    const motivo = exportBlocker(CANVAS_WIDTH_CM, 135, 300)
+    // 300 cm no entra ni con el lienzo angosto: son mas de 16384 px de lado.
+    const motivo = exportBlocker(CANVAS_WIDTH_CM, 300, 300)
     expect(motivo).not.toBeNull()
     expect(motivo).toMatch(/DPI/)
 
     // El DPI que sugiere tiene que entrar de verdad.
-    const sugerido = maxUsableDpi(CANVAS_WIDTH_CM, 135)
-    expect(exportBlocker(CANVAS_WIDTH_CM, 135, sugerido)).toBeNull()
+    const sugerido = maxUsableDpi(CANVAS_WIDTH_CM, 300)
+    expect(exportBlocker(CANVAS_WIDTH_CM, 300, sugerido)).toBeNull()
   })
 
   it('una variante nace proporcionada y se mantiene al editarla', () => {
@@ -292,7 +301,7 @@ describe('los avisos que ve el usuario', () => {
 
     expect(v.heightCm).toBeCloseTo(v.widthCm * ratio, 1)
 
-    const nueva = sizeFromWidth(30, ratio, CANVAS_WIDTH_CM)
-    expect(nueva.heightCm).toBeCloseTo(12, 1)
+    const nueva = sizeFromWidth(10, ratio, CANVAS_WIDTH_CM)
+    expect(nueva.heightCm).toBeCloseTo(4, 1)
   })
 })

@@ -109,7 +109,7 @@ export const BACKGROUND_PRESETS = {
 /** Configuracion global del trabajo. */
 export interface CanvasConfig {
   /**
-   * Ancho del lienzo en cm. FIJO en 58 cm: es el ancho del material que usa el
+   * Ancho del lienzo en cm. FIJO: es el ancho del material que usa el
    * proveedor, asi que no se edita desde la UI. Sigue siendo un campo de la
    * config (y no una constante suelta) porque el motor de packing lo recibe
    * como parametro y a futuro puede haber otros anchos.
@@ -122,7 +122,7 @@ export interface CanvasConfig {
   /**
    * Lado de la celda de la grilla que usa el nesting por forma, en cm.
    * Es la perilla precision/velocidad: mas chico detecta mejor las formas pero
-   * cuesta mas. Con 0.1 (1 mm), el lienzo de 58 cm tiene 580 columnas.
+   * cuesta mas. Con 0.1 (1 mm), el lienzo de 28 cm tiene 280 columnas.
    *
    * Ojo: como las celdas se redondean hacia afuera, la separacion real entre
    * piezas queda >= gapCm, y hasta gapCm + 2 celdas en el peor caso.
@@ -145,7 +145,7 @@ export interface CanvasConfig {
 }
 
 /** Ancho del material en cm. No configurable (ver CanvasConfig.widthCm). */
-export const CANVAS_WIDTH_CM = 58
+export const CANVAS_WIDTH_CM = 28
 
 /** Valores por defecto confirmados con el usuario del negocio. */
 export const DEFAULT_CONFIG: CanvasConfig = {
